@@ -2,8 +2,9 @@
 
 **The throw arc you can actually ship.**
 
-Unreal Engine 5.8 · one runtime module · Win64 / Mac / Linux · no third-party code · no Niagara, no
-materials, no meshes
+Unreal Engine 5.8 · one runtime module · built and verified on Win64, with Mac and Linux
+allow-listed but not built for this release · no third-party code · no Niagara, no materials, no
+meshes
 
 ---
 
@@ -95,8 +96,11 @@ arc, so the two always agree.
 * **`UArcCastSettings`** — project-wide defaults with runtime setters.
 * **Console commands** — `ArcCast.Test`, `ArcCast.Bounces`, `ArcCast.Occlusion`, `ArcCast.Style`,
   `ArcCast.Clear`, `ArcCast.Stats`.
-* **Editor-viewport drawing** — the arc appears with no play session running, so it can be placed,
-  framed and filmed while the level is being built.
+* **Editor-viewport drawing** — an editor-only second path, so the arc can be placed, framed and
+  filmed while the level is being built, with no play session running. Press `G` for **Game View**:
+  the path hangs off the engine's `Game` show flag, and in an ordinary perspective viewport it draws
+  nothing. Game View is the mode you frame and film in anyway. The shipping path is the `AHUD` one
+  and does not depend on this.
 * **A measured budget** — a hard cap on integration steps per frame. Over budget the step size is
   coarsened rather than arcs being dropped or deferred: a busy frame costs accuracy, not frame time.
 * **A demo map** with a wall, a pit, a steep ramp, a flat podium, an alcove and a staircase, so every
@@ -138,7 +142,8 @@ Stated plainly, because a plugin that hides its edges wastes your afternoon.
 ## Requirements
 
 * Unreal Engine 5.8
-* Win64, Mac or Linux
+* Built and verified on Win64. Mac and Linux are allow-listed in the `.uplugin` but were not built
+  for this release
 * No third-party libraries, no external dependencies, no plugin dependencies
 * Blueprint-only projects fully supported; complete C++ source included
 
@@ -147,4 +152,4 @@ Stated plainly, because a plugin that hides its edges wastes your afternoon.
 Documentation: <https://github.com/SimulatedFlow/ue-plugin-ArcCast>
 Support: <mailto:teufelsilvan@gmail.com>
 
-Copyright 2026 Simulated Flow. All Rights Reserved.
+Copyright 2026 Silvan Teufel. All Rights Reserved.

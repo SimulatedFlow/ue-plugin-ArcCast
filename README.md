@@ -21,8 +21,9 @@ thing your game is about to launch would end up.
 2. Add the **ArcCast** component to the actor that aims. Attach it to the hand or the muzzle.
 3. Leave `Profile` empty — the built-in `Grenade` profile is used, so an arc appears immediately.
 
-The arc is visible in the editor viewport with no play session, and in PIE and in a packaged build
-through whatever HUD class you already have.
+The arc is visible in PIE and in a packaged build through whatever HUD class you already have, and
+in the editor viewport with no play session — for that last one press `G` for Game View, because the
+editor path hangs off the engine's `Game` show flag.
 
 To throw for real, hand `Get Launch Location` and `Get Launch Velocity` to your spawn — then the
 projectile follows the arc that was drawn.
@@ -57,7 +58,7 @@ Store description and honest limits: [`Docs/Fab-Store-Description.md`](Docs/Fab-
 Online: <https://github.com/SimulatedFlow/ue-plugin-ArcCast>
 Support: <mailto:teufelsilvan@gmail.com>
 
-Copyright 2026 Simulated Flow. All Rights Reserved.
+Copyright 2026 Silvan Teufel. All Rights Reserved.
 
 <!-- SF-STORE-BLOCK:BEGIN -->
 ## 🛒 Source-available — see before you buy
@@ -75,5 +76,5 @@ _This plugin does not have its own Fab listing yet — the store link above is w
 
 👉 **[Get the free pack](https://silvan.teufel-engineering.com/newsletter/plugins/?q=gh)**
 
-_© 2026 Simulated Flow. All rights reserved._
+_© 2026 Silvan Teufel. All rights reserved._
 <!-- SF-STORE-BLOCK:END -->

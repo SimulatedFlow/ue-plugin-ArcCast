@@ -81,8 +81,9 @@ runs normally — it just gets an honest `NoGround` verdict instead of a telepor
    starts. The component aims down its own **forward vector**.
 4. Leave `Profile` empty for now. The plugin ships four built-in profiles in code, and the project
    default is `Grenade`, so an arc appears immediately — no asset needed.
-5. That is it. The arc is already visible **in the editor viewport**, with no play session, because
-   the component sets `bTickInEditor`. Rotate the component and watch the arc swing.
+5. That is it. **Press `G` for Game View** and the arc is visible **in the editor viewport**, with
+   no play session, because the component sets `bTickInEditor`. Rotate the component and watch the
+   arc swing. (Game View is required — see [section 9](#the-editor-viewport).)
 
 Press Play. The arc is drawn through `AHUD` whatever your HUD class is, because
 `bAutoSpawnHUDComponent` is on by default (see [section 4](#4-the-three-drawing-paths)).
@@ -175,9 +176,15 @@ void AMyHUD::DrawHUD()
 With `Draw In Editor Viewport` on (default), arcs are also drawn in an editor viewport with **no PIE
 session running**, so a level designer can place a thrower and see its arc while building the level.
 That path goes through `UDebugDrawService`, which is compiled out of a cooked build — it is a
-convenience for authoring, never something a game should rely on. It needs a player controller to
-supply the view, so a viewport in a level that has never simulated may show nothing until you press
-Play once.
+convenience for authoring, never something a game should rely on.
+
+**The viewport has to be in Game View.** Press `G` (or *Show → Game View*). The draw delegate is
+registered under the engine's `Game` show flag, and that flag is off in an ordinary editor
+perspective viewport — so with the flag off, nothing is drawn and nothing is even computed. This is
+not a bug and not a missing player controller: Game View is the mode you frame and film in anyway,
+which is what this path is for. If you run `ArcCast.Test` before the viewport has drawn one frame in
+Game View, the log says *"no view seen yet"* — that is the same fact, seen from the other side,
+because the arc is thrown from the cached camera position.
 
 ---
 
@@ -737,8 +744,9 @@ take it from your own scene.**
   overhang; it lies on whatever is directly above or below each ring point.
 * Occlusion is a single line trace per sampled point, not a visibility volume: a thin railing between
   the camera and the arc will mark a stretch occluded.
-* The editor-viewport draw path needs a player controller to supply a view. A level that has never
-  simulated may show no arc in the viewport until Play has been pressed once.
+* The editor-viewport draw path only runs while the viewport is in **Game View** (`G`), because it
+  is registered under the engine's `Game` show flag. In an ordinary perspective viewport it draws
+  nothing.
 
 ---
 
@@ -750,9 +758,10 @@ is on. Then run `ArcCast.Test` — if the test arc appears, the problem is in ho
 aimed, not in the drawing.
 
 **Arc in PIE but not in the editor viewport.**
-`bDrawInEditorViewport` must be on, and the component must have `bTickInEditor` (it does by default).
-A Blueprint actor that recreates the component may have lost the flag. The path also needs a player
-controller for the view — press Play once and stop, then look again.
+**Press `G` for Game View first** — that is the answer nine times out of ten. The editor path hangs
+off the `Game` show flag, which is off in an ordinary perspective viewport. If it still does not
+appear: `bDrawInEditorViewport` must be on, and the component must have `bTickInEditor` (it does by
+default; a Blueprint actor that recreates the component may have lost the flag).
 
 **Arc in the editor viewport but not in a packaged build.**
 That is the `bDrawInEditorViewport` path, which is editor-only by design. The shipping path is
@@ -829,4 +838,4 @@ code profiles mean nothing depends on the shipped assets.
 Documentation: <https://github.com/SimulatedFlow/ue-plugin-ArcCast>
 Support: <mailto:teufelsilvan@gmail.com>
 
-Copyright 2026 Simulated Flow. All Rights Reserved.
+Copyright 2026 Silvan Teufel. All Rights Reserved.
