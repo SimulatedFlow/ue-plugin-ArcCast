@@ -827,6 +827,6 @@ code profiles mean nothing depends on the shipped assets.
 ## 18. Support
 
 Documentation: <https://github.com/SimulatedFlow/ue-plugin-ArcCast>
-Support: <mailto:simulatedflow@gmail.com>
+Support: <mailto:teufelsilvan@gmail.com>
 
-Copyright 2026 Simulated Flow. All Rights Reserved.
+Copyright 2026 Silvan Teufel. All Rights Reserved.
