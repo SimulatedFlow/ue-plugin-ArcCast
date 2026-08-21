@@ -13,26 +13,69 @@ already have a throwing system, or are about to write one.
 
 ## Contents
 
-1. [Install and first arc — five minutes](#1-install-and-first-arc--five-minutes)
-2. [Why the engine's own preview disappears in Shipping](#2-why-the-engines-own-preview-disappears-in-shipping)
-3. [The three drawing paths](#3-the-three-drawing-paths)
-4. [Profiles](#4-profiles)
-5. [The landing verdict, and wiring it to a crosshair](#5-the-landing-verdict-and-wiring-it-to-a-crosshair)
-6. [Prediction with no drawing at all](#6-prediction-with-no-drawing-at-all)
-7. [The splash ring](#7-the-splash-ring)
-8. [Occlusion-aware drawing](#8-occlusion-aware-drawing)
-9. [Making the preview agree with your projectile](#9-making-the-preview-agree-with-your-projectile)
-10. [API reference](#10-api-reference)
-11. [Console commands](#11-console-commands)
-12. [Project settings](#12-project-settings)
-13. [Cost, budget and limits](#13-cost-budget-and-limits)
-14. [Troubleshooting](#14-troubleshooting)
+1. [Requirements, engine and supported platforms](#1-requirements-engine-and-supported-platforms)
+2. [Install and first arc — five minutes](#2-install-and-first-arc--five-minutes)
+3. [Why the engine's own preview disappears in Shipping](#3-why-the-engines-own-preview-disappears-in-shipping)
+4. [The three drawing paths](#4-the-three-drawing-paths)
+5. [Profiles](#5-profiles)
+6. [The landing verdict, and wiring it to a crosshair](#6-the-landing-verdict-and-wiring-it-to-a-crosshair)
+7. [Prediction with no drawing at all](#7-prediction-with-no-drawing-at-all)
+8. [The splash ring](#8-the-splash-ring)
+9. [Occlusion-aware drawing](#9-occlusion-aware-drawing)
+10. [Making the preview agree with your projectile](#10-making-the-preview-agree-with-your-projectile)
+11. [Class and API overview](#11-class-and-api-overview)
+12. [Code examples](#12-code-examples)
+13. [Console commands](#13-console-commands)
+14. [Project settings](#14-project-settings)
+15. [Cost, budget and limits](#15-cost-budget-and-limits)
+16. [Troubleshooting](#16-troubleshooting)
+17. [The demo map](#17-the-demo-map)
+18. [Support](#18-support)
 
 ---
 
-## 1. Install and first arc — five minutes
+## 1. Requirements, engine and supported platforms
+
+| | |
+|---|---|
+| **Engine version** | Unreal Engine **5.8** (`"EngineVersion": "5.8.0"` in `ArcCast.uplugin`) |
+| **Modules** | One: `ArcCast`, `Type: Runtime`, `LoadingPhase: PreDefault` |
+| **Supported platforms** | **Win64, Mac, Linux** — the module's `PlatformAllowList` |
+| **Engine dependencies** | `Core`, `CoreUObject`, `Engine`, `DeveloperSettings` (public); `SlateCore`, `RenderCore`, `NavigationSystem` (private) |
+| **Third-party code** | None. No external libraries, no bundled binaries beyond the compiled module |
+| **Plugin dependencies** | None. ArcCast does not require any other plugin, Fab or engine |
+| **Project type** | Blueprint-only projects fully supported; full C++ source included |
+| **Build configurations** | Verified building for `UnrealEditor Development`, `UnrealGame Development` and `UnrealGame Shipping` |
+| **Content** | `CanContainContent: true`. The demo content under `Content/ArcCast/` is optional example material |
+
+### Notes on the platform list
+
+The drawing path is `UCanvas` through `AHUD`, and the simulation is `UWorld::SweepSingleByChannel`.
+Neither is platform-specific and neither uses a rendering feature beyond canvas line items, so the
+plugin has no platform-specific code at all. The `PlatformAllowList` is limited to the three desktop
+platforms because those are the ones the plugin is verified on; nothing in the source prevents it from
+compiling elsewhere.
+
+`NavigationSystem` is a **private** dependency and is only reached when a profile sets
+`bRequireNavMesh`. A project with no navigation system, or with no built navigation data, loads and
+runs normally — it just gets an honest `NoGround` verdict instead of a teleport target. See
+[section 6](#6-the-landing-verdict-and-wiring-it-to-a-crosshair).
+
+### What is *not* a dependency, on purpose
+
+* **No UMG.** The preview is canvas drawing. The demo HUD in `Content/ArcCast/UI/` is example
+  material, not the product.
+* **No `UnrealEd`.** Everything ships. The editor-viewport draw is a `UDebugDrawService` second path
+  behind `WITH_EDITOR`, not an editor module.
+* **No Niagara, no `ProceduralMeshComponent`.** The arc needs no material, no mesh and no asset of
+  any kind — that is the reason it runs in a fresh project immediately and costs nothing to cook.
+
+---
+
+## 2. Install and first arc — five minutes
 
 1. Copy `ArcCast/` into your project's `Plugins/` folder and restart the editor.
+   (In a C++ project, regenerate project files if the editor asks.)
 2. Open the actor that should aim — a character, a weapon, a turret.
 3. **Add Component → ArcCast.** Attach it to the hand socket, the muzzle, or wherever the throw
    starts. The component aims down its own **forward vector**.
@@ -42,7 +85,7 @@ already have a throwing system, or are about to write one.
    the component sets `bTickInEditor`. Rotate the component and watch the arc swing.
 
 Press Play. The arc is drawn through `AHUD` whatever your HUD class is, because
-`bAutoSpawnHUDComponent` is on by default (see [section 3](#3-the-three-drawing-paths)).
+`bAutoSpawnHUDComponent` is on by default (see [section 4](#4-the-three-drawing-paths)).
 
 To read the landing point in Blueprint:
 
@@ -62,7 +105,7 @@ Using those two nodes is what guarantees the projectile follows the arc that was
 
 ---
 
-## 2. Why the engine's own preview disappears in Shipping
+## 3. Why the engine's own preview disappears in Shipping
 
 This is worth stating plainly, because it is the reason this plugin exists.
 
@@ -95,7 +138,7 @@ the same canvas code as everything else.
 
 ---
 
-## 3. The three drawing paths
+## 4. The three drawing paths
 
 All three end in `UArcCastSubsystem::DrawArcs(UCanvas*)`. A frame guard makes sure the arcs are never
 drawn twice in one frame, so having two of them enabled is harmless.
@@ -132,18 +175,21 @@ void AMyHUD::DrawHUD()
 With `Draw In Editor Viewport` on (default), arcs are also drawn in an editor viewport with **no PIE
 session running**, so a level designer can place a thrower and see its arc while building the level.
 That path goes through `UDebugDrawService`, which is compiled out of a cooked build — it is a
-convenience for authoring, never something a game should rely on.
+convenience for authoring, never something a game should rely on. It needs a player controller to
+supply the view, so a viewport in a level that has never simulated may show nothing until you press
+Play once.
 
 ---
 
-## 4. Profiles
+## 5. Profiles
 
 `UArcCastProfile` is a Data Asset that carries **flight behaviour and appearance together**. A
 grenade arc and a teleport arc do not only fly differently, they have to look different, and
 splitting that across two assets just means every project re-pairs them by hand.
 
 **Create one:** right-click in the Content Browser → *Miscellaneous → Data Asset → ArcCast Profile*,
-or duplicate one of `Content/ArcCast/Profiles/DA_ArcCast_*`.
+or duplicate one of the shipped assets in `Content/ArcCast/Profiles/` (`DA_Arc_Grenade`,
+`DA_Arc_Teleport`, `DA_Arc_Arrow`, `DA_Arc_Bouncy`).
 
 ### Built-in profiles
 
@@ -174,6 +220,7 @@ from Blueprint with `Get Builtin Profile`, or name one under
 | `RestSpeed` | 60 | Below this, a bounce is treated as coming to rest |
 | `FixedStepSeconds` | 1/30 | Integration step. The per-frame budget may coarsen it |
 | `CollisionChannel` | `Visibility` | A dedicated channel is better than `Visibility` in a real project |
+| `bTraceComplex` | `false` | Per-triangle sweeps. Slower, and rarely what a thrown object wants |
 
 **Landing** — `GroundProbeDistance` (200), `MaxWalkableSlopeAngle` (45°), `bRequireNavMesh` (off),
 `NavProjectExtent`.
@@ -190,7 +237,7 @@ the eye reads the order of events without any legend.
 
 ---
 
-## 5. The landing verdict, and wiring it to a crosshair
+## 6. The landing verdict, and wiring it to a crosshair
 
 Every path comes back with an `EArcCastVerdict`:
 
@@ -232,7 +279,7 @@ and nothing is drawn green.
 
 ---
 
-## 6. Prediction with no drawing at all
+## 7. Prediction with no drawing at all
 
 Half of ArcCast has nothing to do with pixels. `Predict Arc` simulates one arc and hands back the
 result — bounces, landing point, verdict, flight time, path length, ring points — and **registers
@@ -244,7 +291,7 @@ Predict Arc
     World Context   Self
     Start Location  Get Launch Location
     Launch Velocity Get Launch Velocity
-    Profile         DA_ArcCast_Grenade
+    Profile         DA_Arc_Grenade
     Ignored Actors  [ Self ]
     Max Range       2500
         → Path (Verdict, Impact Point, Total Time, Total Distance, Bounce Count, Points…)
@@ -261,7 +308,7 @@ Uses that need no preview at all:
 
 ---
 
-## 7. The splash ring
+## 8. The splash ring
 
 At the landing point ArcCast builds a circle of `RingSegments` points in the plane of the impact
 normal, then **probes each point individually** up and down by `RingConformDistance` and moves it to
@@ -276,7 +323,7 @@ Turn it off with `bDrawRing`, or set `SplashRadius` to 0. Cheaper settings: fewe
 
 ---
 
-## 8. Occlusion-aware drawing
+## 9. Occlusion-aware drawing
 
 With `bOcclusionAware` on (default), every `OcclusionEveryNthPoint`-th point is traced from the
 camera. Blocked stretches are **not removed** — they are drawn at `OccludedOpacity` (0.25) and forced
@@ -294,7 +341,7 @@ Switch it off with `ArcCast.Occlusion 0` or `Set Occlusion Aware`. The occlusion
 
 ---
 
-## 9. Making the preview agree with your projectile
+## 10. Making the preview agree with your projectile
 
 A prediction is a prediction. If your projectile flies under different physics than the preview
 simulated, you get a different path — and that is not a bug in either of them.
@@ -324,7 +371,20 @@ preview, by more the further it flies.
 
 ---
 
-## 10. API reference
+## 11. Class and API overview
+
+| Class | Base | What it is for |
+|---|---|---|
+| `UArcCastSubsystem` | `UTickableWorldSubsystem` | The engine of the plugin: simulates, holds and draws the arcs. One per world. Ticks in the editor |
+| `UArcCastComponent` | `USceneComponent` | The five-minute path. Hang it on a hand, a weapon or a socket; it keeps one arc updated and broadcasts verdict changes |
+| `UArcCastProfile` | `UPrimaryDataAsset` | Flight behaviour *and* appearance in one asset |
+| `UArcCastStatics` | `UBlueprintFunctionLibrary` | Every feature from Blueprint, without C++ |
+| `UArcCastSettings` | `UDeveloperSettings` | Project-wide defaults plus runtime setters |
+| `AArcCastHUD` | `AHUD` | Ready-made HUD class for a project that has none yet |
+| `UArcCastHUDComponent` | `UActorComponent` | Add to *your* HUD and call `DrawArcs` from your own `DrawHUD` |
+
+Types: `FArcCastRequest` (input), `FArcCastPath` (result), `FArcCastStats` (measured cost),
+`EArcCastVerdict`, `EArcCastLineStyle`.
 
 ### `UArcCastComponent` (Scene Component)
 
@@ -340,6 +400,7 @@ preview, by more the further it flies.
 | `Get Impact Actor` | What it lands on, or null |
 | `Get Launch Velocity` / `Get Launch Location` | **Hand these to your throwing code** |
 | `Get Arc Id` | The subsystem id this component's arc lives under |
+| `Is Preview Enabled` | Current state |
 | `On Verdict Changed` | Event — fires on change, not per frame |
 | `On Impact Actor Changed` | Event — fires on change, not per frame |
 
@@ -375,6 +436,12 @@ The owning actor is always ignored by the sweep without being asked.
 
 In C++: `UArcCastSubsystem::Get(WorldContextObject)`.
 
+### `FArcCastRequest`
+
+`StartLocation`, `LaunchVelocity`, `Profile`, `IgnoredActors`, `MaxBouncesOverride` (−1 = profile),
+`MaxSimTimeOverride` (≤ 0 = profile), `SplashRadiusOverride` (< 0 = profile), `MaxRange`
+(0 = unlimited, measured **along the path**, not as a straight line).
+
 ### `FArcCastPath`
 
 `Points`, `BounceIndex`, `Occluded`, `RingPoints`, `ImpactPoint`, `ImpactNormal`, `Verdict`,
@@ -384,9 +451,211 @@ held weakly and read with `Get Arc Impact Actor`.
 `Points` and `BounceIndex` are parallel arrays: `BounceIndex[i]` is how many bounces had happened
 when the segment leaving `Points[i]` was integrated.
 
+### `FArcCastStats`
+
+`ActiveArcs`, `SimSteps`, `SimTraces`, `RingTraces`, `OcclusionTraces`, `TotalTraces`, `LinesDrawn`,
+`SimMilliseconds`, `DrawMilliseconds`, `EffectiveStepSeconds`, `bBudgetCoarsened`.
+
 ---
 
-## 11. Console commands
+## 12. Code examples
+
+### Adding the plugin to a C++ module
+
+`ArcCast` is a normal runtime module. Add it to your own module's dependencies:
+
+```csharp
+// MyGame.Build.cs
+PublicDependencyModuleNames.AddRange(new string[]
+{
+    "Core", "CoreUObject", "Engine", "InputCore",
+    "ArcCast",
+});
+```
+
+Headers: `ArcCastSubsystem.h`, `ArcCastComponent.h`, `ArcCastStatics.h`, `ArcCastProfile.h`,
+`ArcCastTypes.h`.
+
+### a) A weapon with a preview, and a throw that matches it
+
+```cpp
+#include "ArcCastComponent.h"
+#include "GameFramework/ProjectileMovementComponent.h"
+
+AGrenadeLauncher::AGrenadeLauncher()
+{
+    ArcPreview = CreateDefaultSubobject<UArcCastComponent>(TEXT("ArcPreview"));
+    ArcPreview->SetupAttachment(RootComponent, TEXT("Muzzle"));
+    ArcPreview->bPreviewEnabled = false;   // only while aiming
+    ArcPreview->LaunchOffset    = 20.0f;   // clear of the muzzle geometry
+}
+
+void AGrenadeLauncher::StartAiming()
+{
+    ArcPreview->SetPreviewEnabled(true);
+}
+
+void AGrenadeLauncher::Throw()
+{
+    // The two values the preview actually used. Spawning with anything else is how a
+    // projectile ends up somewhere the player did not aim.
+    const FVector SpawnLocation = ArcPreview->GetLaunchLocation();
+    const FVector LaunchVelocity = ArcPreview->GetLaunchVelocity();
+
+    FActorSpawnParameters Params;
+    Params.Owner = this;
+    Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+    if (AGrenade* Grenade = GetWorld()->SpawnActor<AGrenade>(
+            GrenadeClass, SpawnLocation, LaunchVelocity.Rotation(), Params))
+    {
+        Grenade->GetProjectileMovement()->Velocity = LaunchVelocity;
+    }
+
+    ArcPreview->SetPreviewEnabled(false);
+}
+```
+
+### b) Reacting to the verdict instead of polling it
+
+```cpp
+void AGrenadeLauncher::BeginPlay()
+{
+    Super::BeginPlay();
+    ArcPreview->OnVerdictChanged.AddDynamic(this, &AGrenadeLauncher::HandleVerdictChanged);
+}
+
+void AGrenadeLauncher::HandleVerdictChanged(EArcCastVerdict NewVerdict)
+{
+    bThrowAllowed = (NewVerdict == EArcCastVerdict::Valid);
+    OnCrosshairStateChanged.Broadcast(NewVerdict);   // recolour once, not every frame
+}
+```
+
+### c) Prediction with no drawing — an AI deciding whether the throw is worth it
+
+```cpp
+#include "ArcCastStatics.h"
+
+bool UBTTask_ThrowGrenade::WouldReachCover(AAIController* Controller,
+                                           const FVector& CoverLocation) const
+{
+    APawn* Pawn = Controller->GetPawn();
+    const FVector Start = Pawn->GetActorLocation() + FVector(0.f, 0.f, 60.f);
+    const FVector Velocity = SolveThrowVelocity(Start, CoverLocation);
+
+    const FArcCastPath Path = UArcCastStatics::PredictArc(
+        Pawn, Start, Velocity, GrenadeProfile, { Pawn }, /*MaxRange=*/3000.f);
+
+    // Nothing was registered and nothing was drawn - this is a pure query, safe on a
+    // dedicated server where no canvas exists.
+    return Path.bHasResult
+        && Path.Verdict == EArcCastVerdict::Valid
+        && FVector::Dist(Path.ImpactPoint, CoverLocation) < AcceptableRadius;
+}
+```
+
+### d) The same through the subsystem, with the full request struct
+
+```cpp
+#include "ArcCastSubsystem.h"
+
+if (UArcCastSubsystem* Arcs = UArcCastSubsystem::Get(this))
+{
+    FArcCastRequest Request;
+    Request.StartLocation       = MuzzleLocation;
+    Request.LaunchVelocity      = AimDirection * 1600.f;
+    Request.Profile             = MyProfile;
+    Request.IgnoredActors       = { this };
+    Request.MaxBouncesOverride  = 0;        // stop at the first hit, like the engine does
+    Request.SplashRadiusOverride = 450.f;   // this one ability has a bigger blast
+    Request.MaxRange            = 2500.f;
+
+    const FArcCastPath Path = Arcs->SimulateArc(Request);
+    if (Path.Verdict == EArcCastVerdict::TooSteep)
+    {
+        RefuseWithReason(NSLOCTEXT("MyGame", "TooSteep", "You cannot land there."));
+    }
+}
+```
+
+### e) Driving an arc by hand, without the component
+
+Useful when the aim comes from somewhere the component cannot see — a spline, a cursor in an RTS, a
+solved lob to a target actor.
+
+```cpp
+void AAbilityTargeter::Tick(float DeltaTime)
+{
+    Super::Tick(DeltaTime);
+
+    if (!bTargeting)
+    {
+        if (ArcId != 0)
+        {
+            UArcCastStatics::HideArc(this, ArcId);
+            ArcId = 0;
+        }
+        return;
+    }
+
+    // Pass the id back in every frame: the arc is replaced in place instead of piling up.
+    ArcId = UArcCastStatics::ShowArcFrom(
+        this, GetCastOrigin(), SolveVelocityToCursor(), AbilityProfile, { GetOwner() },
+        /*MaxRange=*/0.f, ArcId);
+}
+```
+
+### f) Drawing from your own HUD class
+
+```cpp
+// MyHUD.h
+UPROPERTY(VisibleAnywhere)
+TObjectPtr<UArcCastHUDComponent> ArcCastComponent;
+
+// MyHUD.cpp
+AMyHUD::AMyHUD()
+{
+    ArcCastComponent = CreateDefaultSubobject<UArcCastHUDComponent>(TEXT("ArcCast"));
+}
+
+void AMyHUD::DrawHUD()
+{
+    Super::DrawHUD();
+    DrawWorldSpaceMarkers();
+    ArcCastComponent->DrawArcs(Canvas);   // arcs above the markers...
+    DrawCrosshair();                      // ...and below the crosshair
+}
+```
+
+If you take this path, switch `Auto Spawn HUD Component` off in the project settings — not because it
+would double-draw (the frame guard prevents that) but so the draw order is unambiguous.
+
+### g) Reading the measured cost
+
+```cpp
+const FArcCastStats Stats = UArcCastStatics::GetArcCastStats(this);
+UE_LOG(LogTemp, Log, TEXT("ArcCast: %d arcs, %d steps, %d traces (%d occl), sim %.2f ms, draw %.2f ms%s"),
+    Stats.ActiveArcs, Stats.SimSteps, Stats.TotalTraces, Stats.OcclusionTraces,
+    Stats.SimMilliseconds, Stats.DrawMilliseconds,
+    Stats.bBudgetCoarsened ? TEXT(" (coarsened)") : TEXT(""));
+```
+
+### h) Changing settings at runtime
+
+```cpp
+#include "ArcCastSettings.h"
+
+UArcCastSettings::SetOcclusionAware(false);   // tight frame: drop the camera traces
+UArcCastSettings::SetGlobalOpacity(0.5f);     // dim the preview during a cutscene
+UArcCastSettings::SetEnabled(false);          // simulate nothing, draw nothing
+```
+
+These push into every live world immediately and deliberately do **not** rewrite `DefaultGame.ini`.
+
+---
+
+## 13. Console commands
 
 | Command | Effect |
 |---|---|
@@ -403,7 +672,7 @@ switches are most useful.
 
 ---
 
-## 12. Project settings
+## 14. Project settings
 
 `Project Settings → Plugins → ArcCast`, stored in `DefaultGame.ini`.
 
@@ -428,7 +697,7 @@ value into every live world. Runtime setters deliberately do **not** rewrite `De
 
 ---
 
-## 13. Cost, budget and limits
+## 15. Cost, budget and limits
 
 ### What one arc costs
 
@@ -468,10 +737,12 @@ take it from your own scene.**
   overhang; it lies on whatever is directly above or below each ring point.
 * Occlusion is a single line trace per sampled point, not a visibility volume: a thin railing between
   the camera and the arc will mark a stretch occluded.
+* The editor-viewport draw path needs a player controller to supply a view. A level that has never
+  simulated may show no arc in the viewport until Play has been pressed once.
 
 ---
 
-## 14. Troubleshooting
+## 16. Troubleshooting
 
 **No arc at all.**
 Check `Project Settings → Plugins → ArcCast → bEnabled`, then that the component's `bPreviewEnabled`
@@ -480,12 +751,13 @@ aimed, not in the drawing.
 
 **Arc in PIE but not in the editor viewport.**
 `bDrawInEditorViewport` must be on, and the component must have `bTickInEditor` (it does by default).
-A Blueprint actor that recreates the component may have lost the flag.
+A Blueprint actor that recreates the component may have lost the flag. The path also needs a player
+controller for the view — press Play once and stop, then look again.
 
 **Arc in the editor viewport but not in a packaged build.**
 That is the `bDrawInEditorViewport` path, which is editor-only by design. The shipping path is
 `bAutoSpawnHUDComponent`, `AArcCastHUD`, or `UArcCastHUDComponent` — see
-[section 3](#3-the-three-drawing-paths).
+[section 4](#4-the-three-drawing-paths).
 
 **The arc starts by hitting the thrower.**
 Put the actor in `AdditionalIgnoredActors`, or raise `LaunchOffset`. The owning actor is already
@@ -505,7 +777,7 @@ The project has no navigation system, or no built navigation data at the landing
 honest answer, not a failure — build navigation, or turn `bRequireNavMesh` off.
 
 **The projectile does not follow the arc.**
-Section 9. Nine times out of ten it is `GravityScale` against `Projectile Gravity Scale`, or a
+Section 10. Nine times out of ten it is `GravityScale` against `Projectile Gravity Scale`, or a
 launch velocity that was recomputed instead of taken from `Get Launch Velocity`.
 
 **The arc flickers between two colours on a slope.**
@@ -514,9 +786,47 @@ away from the surface you are testing on.
 
 ---
 
-## Support
+## 17. The demo map
+
+Everything below ships inside the plugin, under `Content/ArcCast/`, so it travels with the plugin
+folder and needs no project setup.
+
+Open **`/ArcCast/ArcCast/Maps/L_ArcCastDemo`** and press Play. The map is a small throwing range: a
+flat pad, a flight of stairs, a 50-degree ramp, a wall the arc passes behind, and an open ledge.
+
+| Asset | What it is for |
+|---|---|
+| `Maps/L_ArcCastDemo` | The throwing range. Its World Settings point at `BP_ArcCastDemoGameMode`. |
+| `Blueprints/BP_ArcCastThrower` | A pedestal with a barrel and a **`UArcCastComponent`** on it. The four `Shot*` events aim the component by setting its relative rotation; the four `Profile*` events swap the profile asset. This is the only actor in the demo that touches the plugin. |
+| `Blueprints/BP_ArcCastDemoDirector` | On Begin Play: takes the demo camera as the view target, spawns the panel widget and switches the player controller to UI input. |
+| `Blueprints/BP_ArcCastDemoHUD` | A Blueprint child of **`AArcCastHUD`** — the ready-made HUD class, set as the game mode's HUD class. |
+| `Blueprints/BP_ArcCastDemoGameMode` | Wires the HUD class in. Nothing else. |
+| `UI/WBP_ArcCastPanel` | The on-screen panel. Its buttons call the thrower's events; its Tick reads `Get Verdict` off the component and prints it through `Verdict to Text`. |
+| `Profiles/DA_Arc_*` | Grenade, Teleport, Arrow and Bouncy as **assets** — the same four shapes as the built-in code profiles, but editable. Duplicate one to start your own. |
+| `Materials/` | `M_ArcCastSurface` plus the instances the range geometry uses. Nothing here is required by the plugin. |
+
+**What each button shows**
+
+- **Landing Pad** — a `Valid` landing: green arc, splash ring conformed to the pad, one bounce.
+- **Stairs** — the ring following the treads instead of floating as a flat disc.
+- **Steep Ramp** — `TooSteep`: the arc and the ring turn amber because the surface leans past the
+  profile's `MaxWalkableSlopeAngle`.
+- **Over the Ledge** — `NoGround`: the arc turns red and the stretch that falls behind the geometry
+  is drawn dashed and faint rather than shining through it.
+- **Grenade / Teleport / Arrow / Bouncy** — the same aim through four profile assets.
+- **Stats Box** — toggles the on-screen cost readout (`Set Show ArcCast Stats`, same as
+  `ArcCast.Stats 1`).
+- **Occlusion** — toggles `bOcclusionAware`; watch `occl` in the stats box fall to zero.
+
+The demo takes no screenshots, spawns no projectiles and writes nothing to disk. Deleting
+`Content/ArcCast/` removes the whole demo and leaves the plugin fully functional — the four built-in
+code profiles mean nothing depends on the shipped assets.
+
+---
+
+## 18. Support
 
 Documentation: <https://github.com/SimulatedFlow/ue-plugin-ArcCast>
-Support: <mailto:teufelsilvan@gmail.com>
+Support: <mailto:simulatedflow@gmail.com>
 
 Copyright 2026 Simulated Flow. All Rights Reserved.
