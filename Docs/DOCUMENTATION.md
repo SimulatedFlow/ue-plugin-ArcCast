@@ -829,4 +829,4 @@ code profiles mean nothing depends on the shipped assets.
 Documentation: <https://github.com/SimulatedFlow/ue-plugin-ArcCast>
 Support: <mailto:teufelsilvan@gmail.com>
 
-Copyright 2026 Silvan Teufel. All Rights Reserved.
+Copyright 2026 Simulated Flow. All Rights Reserved.
