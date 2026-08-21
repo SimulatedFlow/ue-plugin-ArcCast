@@ -519,4 +519,4 @@ away from the surface you are testing on.
 Documentation: <https://github.com/SimulatedFlow/ue-plugin-ArcCast>
 Support: <mailto:teufelsilvan@gmail.com>
 
-Copyright 2026 Silvan Teufel. All Rights Reserved.
+Copyright 2026 Simulated Flow. All Rights Reserved.

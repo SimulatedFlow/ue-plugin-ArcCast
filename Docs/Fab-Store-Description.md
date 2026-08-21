@@ -147,4 +147,4 @@ Stated plainly, because a plugin that hides its edges wastes your afternoon.
 Documentation: <https://github.com/SimulatedFlow/ue-plugin-ArcCast>
 Support: <mailto:teufelsilvan@gmail.com>
 
-Copyright 2026 Silvan Teufel. All Rights Reserved.
+Copyright 2026 Simulated Flow. All Rights Reserved.
