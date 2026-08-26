@@ -142,7 +142,7 @@ Stated plainly, because a plugin that hides its edges wastes your afternoon.
 ## Requirements
 
 * Unreal Engine 5.8
-* Built and verified on Win64. Mac and Linux are allow-listed in the `.uplugin` but were not built
+* Built and verified on Win64. Mac and Linux are not in the `.uplugin`'s `PlatformAllowList` and were not built
   for this release
 * No third-party libraries, no external dependencies, no plugin dependencies
 * Blueprint-only projects fully supported; complete C++ source included

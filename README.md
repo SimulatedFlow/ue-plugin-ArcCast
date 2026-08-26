@@ -1,6 +1,6 @@
 # ArcCast — Trajectory & Landing Preview
 
-**Unreal Engine 5.8 · one runtime module · Win64 / Mac / Linux**
+**Unreal Engine 5.8 · one runtime module · Win64**
 
 The throw arc you can actually ship: bounce-chained trajectory prediction with a landing verdict, a
 splash ring conformed to the geometry, and occlusion-aware drawing — on `UCanvas`, so it survives a

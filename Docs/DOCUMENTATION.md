@@ -1,6 +1,6 @@
 # ArcCast — Trajectory & Landing Preview
 
-**Unreal Engine 5.8 · one runtime module · Win64 / Mac / Linux · no third-party code**
+**Unreal Engine 5.8 · one runtime module · Win64 · no third-party code**
 
 The throw arc you can actually ship: bounce-chained trajectory prediction with a landing verdict,
 a conformed splash ring and occlusion-aware drawing — on `UCanvas`, so it survives a Shipping build.
@@ -40,7 +40,7 @@ already have a throwing system, or are about to write one.
 |---|---|
 | **Engine version** | Unreal Engine **5.8** (`"EngineVersion": "5.8.0"` in `ArcCast.uplugin`) |
 | **Modules** | One: `ArcCast`, `Type: Runtime`, `LoadingPhase: PreDefault` |
-| **Supported platforms** | **Win64, Mac, Linux** — the module's `PlatformAllowList` |
+| **Supported platforms** | **Win64** — the module's `PlatformAllowList` |
 | **Engine dependencies** | `Core`, `CoreUObject`, `Engine`, `DeveloperSettings` (public); `SlateCore`, `RenderCore`, `NavigationSystem` (private) |
 | **Third-party code** | None. No external libraries, no bundled binaries beyond the compiled module |
 | **Plugin dependencies** | None. ArcCast does not require any other plugin, Fab or engine |
