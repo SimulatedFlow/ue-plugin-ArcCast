@@ -52,7 +52,7 @@ projectile follows the arc that was drawn.
 
 ## Documentation
 
-Online, free and without an account: <https://github.com/SimulatedFlow/documentation>
+Online, free and without an account: <https://wiki.teufel-engineering.com/en/ArcCast/documentation>
 
 Full documentation: [`Docs/DOCUMENTATION.md`](Docs/DOCUMENTATION.md)
 Store description and honest limits: [`Docs/Fab-Store-Description.md`](Docs/Fab-Store-Description.md)
